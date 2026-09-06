@@ -1,3 +1,11 @@
+# Asciiquarium Catppuccin Mocha fork 
+
+This is a fork made with Claude that changes the color palette to
+Catppuccin Mocha. Animations, species, and everything else are
+unchanged from upstream.
+
+---
+
                               Asciiquarium v1.1
                     by Kirk Baucom <kbaucom@schizoid.com>
                           http://www.robobunny.com

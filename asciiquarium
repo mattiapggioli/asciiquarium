@@ -64,6 +64,72 @@ if ($opt_c) {			# 'classic' mode
 	$new_monster = 0;
 }
 
+# Catppuccin Mocha palette (https://github.com/catppuccin/catppuccin)
+#
+# Redefines the actual RGB behind curses' base color numbers (0-7), which
+# Term::Animation uses for its 8 fixed color pairs (w,r,g,b,c,m,y,k).
+# Entity color masks are untouched: 'r' still means "COLOR_RED", it's just
+# that COLOR_RED is now f38ba8 instead of the standard ANSI red.
+
+my @MOCHA_BASE = (
+	[ 0, '1e1e2e' ], # COLOR_BLACK   -> Base  (background of the whole tank)
+	[ 1, 'f38ba8' ], # COLOR_RED     -> Red
+	[ 2, 'a6e3a1' ], # COLOR_GREEN   -> Green
+	[ 3, 'f9e2af' ], # COLOR_YELLOW  -> Yellow
+	[ 4, '89b4fa' ], # COLOR_BLUE    -> Blue
+	[ 5, 'f5c2e7' ], # COLOR_MAGENTA -> Pink
+	[ 6, '94e2d5' ], # COLOR_CYAN    -> Teal
+	[ 7, 'cdd6f4' ], # COLOR_WHITE   -> Text
+);
+
+# The "bright" counterpart of black, used by the terminal when a base
+# color is drawn with the bold attribute (see the castle's
+# default_color => 'BLACK' in bold). Only applied if the terminal
+# actually exposes >=16 addressable colors.
+my @MOCHA_BRIGHT = (
+	[ 8, '45475a' ], # bright black -> Surface1 (slate-gray castle, not black-on-black)
+);
+
+sub _mocha_component {
+	my ($hex_byte) = @_;
+	return int( hex($hex_byte) / 255 * 1000 + 0.5 );
+}
+
+sub _mocha_rgb {
+	my ($hex) = @_;
+	my ($r, $g, $b) = $hex =~ /^(..)(..)(..)$/;
+	return ( _mocha_component($r), _mocha_component($g), _mocha_component($b) );
+}
+
+my %MOCHA_SAVED_RGB;
+
+# Must be called after $anim->color(1), which is what invokes
+# Curses::start_color() internally.
+sub set_mocha_palette {
+	return unless has_colors();
+	return unless can_change_color();
+
+	my @entries = @MOCHA_BASE;
+	push @entries, @MOCHA_BRIGHT if $Curses::COLORS >= 16;
+
+	for my $entry (@entries) {
+		my ($id) = @$entry;
+		my ($r, $g, $b) = (0, 0, 0);
+		color_content($id, $r, $g, $b);
+		$MOCHA_SAVED_RGB{$id} = [ $r, $g, $b ];
+	}
+	for my $entry (@entries) {
+		my ($id, $hex) = @$entry;
+		init_color($id, _mocha_rgb($hex));
+	}
+}
+
+END {
+	for my $id (keys %MOCHA_SAVED_RGB) {
+		init_color($id, @{ $MOCHA_SAVED_RGB{$id} });
+	}
+}
+
 my @random_objects = init_random_objects();
 
 # the Z depth at which certain items occur
@@ -103,6 +169,7 @@ sub main {
 	#nodelay(1);
 
 	$anim->color(1);
+	set_mocha_palette();
 
 	my $start_time = time;
 	my $paused = 0;
